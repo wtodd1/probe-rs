@@ -28,6 +28,9 @@ pub struct NormalRunOptions {
     /// Disable hardfault vector catch if its supported on the target.
     #[clap(long, help_heading = "RUN OPTIONS")]
     pub no_catch_hardfault: bool,
+    /// Command line string to send to the target if it requests it.
+    #[clap(long, help_heading = "RUN OPTIONS")]
+    pub cmdline: Option<String>,
 }
 
 /// Options only used when in test run mode
@@ -243,6 +246,7 @@ impl Cmd {
                     catch_reset: !self.run_options.no_catch_reset,
                     catch_hardfault: !self.run_options.no_catch_hardfault,
                     rtt_client: Some(client_handle),
+                    cmdline: self.run_options.cmdline,
                 },
                 self.shared_options.always_print_stacktrace,
                 &mut target_output_files,

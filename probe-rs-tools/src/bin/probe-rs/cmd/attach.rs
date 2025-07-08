@@ -43,6 +43,7 @@ impl Cmd {
                 catch_reset: !self.run.run_options.no_catch_reset,
                 catch_hardfault: !self.run.run_options.no_catch_hardfault,
                 rtt_client: Some(client_handle),
+                cmdline: None,
             },
             self.run.shared_options.always_print_stacktrace,
             &mut target_output_files,

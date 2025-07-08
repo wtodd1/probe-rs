@@ -1,0 +1,1 @@
+Added the `--cmdline <CMDLINE>` option to the run command. This string will be sent to the target via semihosting if the target requests it.

@@ -53,6 +53,8 @@ pub struct MonitorOptions {
     pub catch_hardfault: bool,
     /// RTT client if used.
     pub rtt_client: Option<Key<RttClient>>,
+    /// Command line string to send to the target if it requests it.
+    pub cmdline: Option<String>,
 }
 
 /// Monitor in normal run mode.
@@ -178,8 +180,10 @@ fn monitor_impl(
 ) -> anyhow::Result<MonitorExitReason> {
     let mut session = ctx.session_blocking(request.sessid);
 
-    let mut semihosting_sink =
-        MonitorEventHandler::new(|event| sender.send_semihosting_event(event).unwrap());
+    let mut semihosting_sink = MonitorEventHandler::new(
+        |event| sender.send_semihosting_event(event).unwrap(),
+        request.options.cmdline,
+    );
 
     let mut rtt_client = request
         .options
@@ -296,13 +300,15 @@ where
 struct MonitorEventHandler<F: FnMut(SemihostingEvent)> {
     sender: F,
     semihosting_reader: SemihostingReader,
+    cmdline: Option<String>,
 }
 
 impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
-    pub fn new(sender: F) -> Self {
+    pub fn new(sender: F, cmdline: Option<String>) -> Self {
         Self {
             sender,
             semihosting_reader: SemihostingReader::new(),
+            cmdline,
         }
     }
 
@@ -334,10 +340,15 @@ impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
                 );
                 Ok(None) // Continue running
             }
-            SemihostingCommand::GetCommandLine(_) => {
-                tracing::warn!(
-                    "Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing..."
-                );
+            SemihostingCommand::GetCommandLine(request) => {
+                if let Some(cmdline) = &self.cmdline {
+                    tracing::debug!("Sending command line string: {}", cmdline);
+                    request.write_command_line_to_target(core, &cmdline)?;
+                } else {
+                    tracing::warn!(
+                        "Target requested a command line string, but this option has not been configured."
+                    );
+                }
                 Ok(None) // Continue running
             }
             SemihostingCommand::Errno(_) => Ok(None),
